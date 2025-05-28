@@ -101,27 +101,35 @@ def _dipole(core_state:YlmExpansion, state:YlmExpansion, polarization:YlmExpansi
                 result += spin_flip(m_c)*coeff_c*coeff_d*coeff_q*gaunt(m_c, m_q, m_d)
     return result
 
-def _transition_amplitude(core_states:list[YlmExpansion], 
+def _initial_to_final_transition_amplitude(core_states:list[YlmExpansion], 
                           initial:YlmExpansion, 
                           final:YlmExpansion, 
                           incoming_pol:YlmExpansion, 
                           outgoing_pol:YlmExpansion) -> float:
     total_amp = 0.0+0.0j
+    #for core_state in core_states:
+    #    total_amp += np.conj(_dipole(core_state, final, outgoing_pol))*_dipole(core_state, initial, incoming_pol)
+    #return abs(total_amp)**2
+    return abs( sum([np.conj(_dipole(core_state, final, outgoing_pol))*_dipole(core_state, initial, incoming_pol) for core_state in core_states]) )**2
+
+def _transition_amplitude(core_states:list[YlmExpansion], 
+                          initial:YlmExpansion, 
+                          pol:YlmExpansion) -> float:
+    total_amp = 0.0+0.0j
     for core_state in core_states:
-        total_amp += np.conj(_dipole(core_state, final, outgoing_pol))*_dipole(core_state, initial, incoming_pol)
+        total_amp += _dipole(core_state, initial, pol)
     return abs(total_amp)**2
 
 
-def dipole_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], incoming_pol:YlmExpansion, outgoing_pols:list[YlmExpansion]|YlmExpansion ) -> np.ndarray:
+def rixs_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], incoming_pol:YlmExpansion, outgoing_pols:list[YlmExpansion]|YlmExpansion ) -> np.ndarray:
     outgoing_pols = [outgoing_pols] if not isinstance(outgoing_pols, list) else outgoing_pols
     dim = len(states)
     M = np.zeros((dim, dim), dtype=float)
     for pol in outgoing_pols: 
         for initial in range(dim):
             for final in range(dim):
-                M[initial, final] += _transition_amplitude(core_states, states[initial], states[final], incoming_pol, pol)
+                M[initial, final] += _initial_to_final_transition_amplitude(core_states, states[initial], states[final], incoming_pol, pol)
     return M
-
 
 def rixs_cross_section(e_mesh:np.ndarray, 
                        density_of_states:np.ndarray, 
@@ -157,3 +165,40 @@ def rixs_cross_section(e_mesh:np.ndarray,
             total = np.einsum('eif,if->e', integrand, pol_matrix_elements)
             cross_section[ie,je] = simpson(total, x=eocc)
     return x_grid, y_grid, cross_section
+
+def xas_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], polarization:YlmExpansion):
+    dim = len(states)
+    M = np.zeros(dim, dtype=float)
+    for initial in range(dim):
+        M[initial] = _transition_amplitude(core_states, states[initial], polarization)
+    return M
+
+def xas(e_mesh:np.ndarray, 
+                       density_of_states:np.ndarray, 
+                       pol_matrix_elements:np.ndarray,
+                       Gamma:float = 0.6, 
+                       Emin:float=0.0, 
+                       Emax:float=10.0) -> np.ndarray:
+
+    dim_states = density_of_states.shape[-1]
+
+    #pol_matrix_elements = pol_matrix_elements if pol_matrix_elements is not None else np.eye(dim_states) # check for correctness
+
+    below_zero = np.where(e_mesh < 0.0)[0]
+    above_zero = np.where(e_mesh > 0.0)[0]
+
+    eunocc = e_mesh[above_zero]
+    rho_unocc = density_of_states[above_zero, :]
+
+    Ein   = e_mesh[(e_mesh > Emin) & (e_mesh < Emax)]
+
+    xas_data = np.zeros_like(Ein, dtype=float)
+
+    for (ie, ein) in enumerate(Ein):
+        lorentz = 0.5*Gamma / ( (eunocc - ein)**2 + 0.25*Gamma**2 )
+        for state in range(dim_states):
+            integrand    = rho_unocc[:, state]*pol_matrix_elements[state]*lorentz
+            xas_data[ie] += simpson(integrand, x=eunocc)
+    return Ein, xas_data
+
+
