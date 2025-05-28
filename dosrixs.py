@@ -1,11 +1,8 @@
 from __future__ import annotations
 import itertools
-import time
 import numpy as np
 from scipy.special import factorial as fact
 from scipy.integrate import simpson
-
-import matplotlib.pyplot as plt; plt.style.use('publish')
 
 def print_matrix(A:np.ndarray)->None:
     for row in A:
@@ -75,11 +72,13 @@ def gaunt(m1:int, m2:int, m3:int) -> float:
     b = three_j_symbol(l1, m1, l2, m2, l3, m3)
     return coeff*a*b
 
-if False:
-    for m1 in [-1,0,1]:
-        for m2 in [-1,0,1]:
-            for m3 in [-2,-1, 0, 1, 2]:
-                print(f"{m1:2d} {m2:2d} {m3:2d} {gaunt(m1, m2, m3):12.8f}")
+def build_l2_core_states():
+    return [ YlmExpansion(l=1, data= { (+1,0) : 1.0 } ),
+                    YlmExpansion(l=1, data= { (+1,+1) : 1.0/np.sqrt(3), (0,0) : np.sqrt(2)/np.sqrt(3) }),
+                    YlmExpansion(l=1, data= { (-1,0) : 1.0/np.sqrt(3.), (0,+1): np.sqrt(2)/np.sqrt(3) }),
+                    YlmExpansion(l=1, data= { (-1,+1) : 1.0} )
+                  ]
+
 
 # D-orbital definitions
 DXY   = YlmExpansion(l=2, data= {-2 : +1.0j/np.sqrt(2.0), +2 : -1.0j/np.sqrt(2.0) })
@@ -126,13 +125,14 @@ def dipole_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpans
 
 def rixs_cross_section(e_mesh:np.ndarray, 
                        density_of_states:np.ndarray, 
-                       pol_matrix_elements:np.ndarray|None = None, 
+                       pol_matrix_elements:np.ndarray|None=None, 
                        Gamma:float = 0.6, 
                        Emin:float=0.0, 
                        Emax:float=10.0) -> np.ndarray:
 
     dim_states = density_of_states.shape[-1]
-    pol_matrix_elements = np.eye(dim_states) if pol_matrix_elements is None else pol_matrix_elements
+
+    pol_matrix_elements = pol_matrix_elements if pol_matrix_elements is not None else np.eye(dim_states) # check for correctness
 
     below_zero = np.where(e_mesh < 0.0)[0]
     above_zero = np.where(e_mesh > 0.0)[0]
@@ -150,78 +150,10 @@ def rixs_cross_section(e_mesh:np.ndarray,
         for (je, eloss) in enumerate(Eloss):
             e_interp = eocc + eloss
             eout = ein - eloss
-            #lorentz = 0.5*Gamma / ( (eocc - eout)**2 + 0.25*Gamma**2 )
-            lorentz = 1.0 / ( (eocc - eout)**2 + 0.25*Gamma**2 )
+            lorentz = 0.5*Gamma / ( (eocc - eout)**2 + 0.25*Gamma**2 )
             rho_shifted = np.stack([np.interp(e_interp, e_mesh[above_zero], density_of_states[above_zero, initial], left=0.0, right=0.0) 
                                      for initial in range(dim_states)], axis=1)
             integrand = np.einsum('ei,ef,e->eif', rho_shifted, rho_occ, lorentz)
             total = np.einsum('eif,if->e', integrand, pol_matrix_elements)
             cross_section[ie,je] = simpson(total, x=eocc)
     return x_grid, y_grid, cross_section
-
-def get_density_of_states(filename:str) -> tuple[np.ndarray, np.ndarray]:
-    data = np.loadtxt(filename)
-    e = data[:,0]
-    dos = 2*data[:,1:]
-    dos[:,-1] /= 2.0
-    dos[:,-2] /= 2.0
-    return e, dos
-
-def plot_cross_section(ax, data, **kwargs):
-    ax.tick_params(which ='both', direction='out')
-    img = ax.pcolormesh(data[-3], data[-2],data[-1].T, **kwargs)
-    cbar = fig.colorbar(img, ax=ax, location='top', orientation='horizontal', shrink=0.7)
-    return ax
-
-#------------------ script starts -------------------------
-
-# define orbital states
-d_orbitals:list[YlmExpansion] = [DZ2, DXY, DX2Y2, DYZ, DXZ]
-
-
-phi = np.deg2rad(180)
-theta = np.deg2rad(15)
-theta_prime = np.deg2rad(15-153)
-
-s_pol      = np.sin(phi)*EX - np.cos(phi)*EY                                                # s, s'
-p_pol      = np.cos(theta)*EZ - np.sin(theta)*(np.cos(phi)*EX + np.sin(phi)*EY)             # p
-pprime_pol = np.cos(theta_prime)*EZ - np.sin(theta_prime)*(np.cos(phi)*EX + np.sin(phi)*EY) # p'
-
-# define core states
-core_states:list[YlmExpansion] = [ 
-                                  YlmExpansion(l=1, data= { (+1,0) : 1.0 } ),
-                                  YlmExpansion(l=1, data= { (+1,+1) : 1.0/np.sqrt(3), (0,0) : np.sqrt(2)/np.sqrt(3) }),
-                                  YlmExpansion(l=1, data= { (-1,0) : 1.0/np.sqrt(3.), (0,+1): np.sqrt(2)/np.sqrt(3) }),
-                                  YlmExpansion(l=1, data= { (-1,+1) : 1.0} )
-                                  ]
-
-# compute matrix elements \sum_ϵ' M_if(ϵ,ϵ')
-print("--> computing s and p polarizations", end= " ")
-start = time.perf_counter()
-Ms : np.ndaarry = dipole_matrix_elements(d_orbitals, core_states, s_pol, [s_pol, pprime_pol])
-Mp : np.ndaarry = dipole_matrix_elements(d_orbitals, core_states, p_pol, [s_pol, pprime_pol])
-print("finished in  {:.6f} seconds".format(time.perf_counter()-start) )
-
-# compute RISX cross section using DOS and matrix elements
-e_mesh, dos = get_density_of_states('ndnio2-3d-dos.lda.txt')
-
-print('--> computing s cross section', end = " ")
-start = time.perf_counter()
-s_cross_section = rixs_cross_section(e_mesh, dos, Ms, Emin = -1.0, Emax = +7.0)
-print("finished in  {:.6f} seconds".format(time.perf_counter()-start) )
-start = time.perf_counter()
-print('--> computing p cross section', end= " ")
-p_cross_section = rixs_cross_section(e_mesh, dos, Mp, Emin = -1.0, Emax = +7.0)
-print("finished in  {:.6f} seconds".format(time.perf_counter()-start) )
-
-from matplotlib.colors import LinearSegmentedColormap
-def colormap(*args): return LinearSegmentedColormap.from_list('', list(args), N=256)
-
-# plot results
-vmax = np.max(s_cross_section[-1])
-fig, ax = plt.subplots(1,2,sharey=True, figsize=(5,4))
-for a in ax: a.set_xlabel(r"E$_{\text{in}}$ (eV)")
-ax[0] = plot_cross_section(ax[0], s_cross_section,  vmin=0, vmax=vmax, cmap='rainbow')
-ax[1] = plot_cross_section(ax[1], p_cross_section,  vmin=0, vmax=vmax, cmap='rainbow')
-ax[0].set_ylabel(r"E$_{\text{loss}}$ (eV)")
-plt.show()
