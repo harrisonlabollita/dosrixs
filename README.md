@@ -7,25 +7,21 @@ itinerant and charge-transfer features in experimental RIXS spectra.
 Our implementation is based on [M. Norman et al., Phys. Rev. B 107, 165124 (2023)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.107.165124).
 
 ## Features
-### RIXS cross sections
-  
-  Compute RIXS spectra,
+- Compute RIXS spectra 
   
 $$ \tilde{\sigma}(E_{\mathrm{in}}, E_{\mathrm{out}}, \epsilon) = \sum_{i,f,\sigma,\sigma',\epsilon^{\prime}} \int dE \rho_{f\sigma'}(E)\rho_{i\sigma}(E + E_{\mathrm{loss}}) \Big [ \frac{\Gamma}{2} \frac{M_{if\sigma\sigma'}(\epsilon,\epsilon')}{(E - E_{\mathrm{out}})^{2} + \Gamma^{2}/4}\Big ].$$
 
-### X-ray absoprtion spectra (XAS)
-  Compute XAS,
+- Compute X-ray absoprtion spectra (XAS)
 
 $$ \tilde{\sigma}(E_{\mathrm{in}},\epsilon) = \sum_{i,\sigma} \int dE \frac{\Gamma}{2} \frac{\rho_{i\sigma}M_{i\sigma}(\epsilon)}{(E_{\mathrm{in}}-E)^{2}+ \Gamma^{2}/4}.$$
 
 For more details, please see [M. Norman et al., Phys. Rev. B 107, 165124 (2023)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.107.165124) for more details on the notation.
 
-
-## Modular design
-  Based on a central object ``YlmExpansion``, which is an abstract expansion of the spherical harmonics which allows for flexible and and arbitrary computation. This allows enables the computation the 
-  polarization matrix elements, $M_{if\sigma\sigma'}(\epsilon,\epsilon')$, for arbitrary polarizations, initial/final states, and core states.
+## Modular Design
+  Our implementation is based on the abstract expansion of objects in spherical harmonic basis (``YlmExpansion``). This enables the computation of the polarization matrix elements, $M_{if\sigma\sigma'}(\epsilon,\epsilon')$, for arbitrary polarizations, initial/final states, and core states.
 
 ### Transition amplitudes and Polarizations
+
 Within the dipole-dipole approximation, we need to compute the following matrix elements:
 
 $$ \propto \sum_{c} \Big | \langle f|\epsilon_{\mathrm{out}} |c\rangle\langle c | \epsilon_{\mathrm{in}} | i\rangle \Big |^{2}$$
