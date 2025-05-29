@@ -1,84 +1,10 @@
 from __future__ import annotations
 import itertools
 import numpy as np
-from scipy.special import factorial as fact
 from scipy.integrate import simpson
 
-def print_matrix(A:np.ndarray)->None:
-    for row in A:
-        fmt = '{:9.5f} '*len(row)
-        print(fmt.format(*row) )
-
-def three_j_symbol(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
-    if (m1+m2+m3 != 0 or
-        m1 < -j1 or m1 > j1 or
-        m2 < -j2 or m2 > j2 or
-        m3 < -j3 or m3 > j3 or
-        j3 > j1 + j2 or
-        j3 < abs(j1-j2)):
-        return 0.0
-    three_j_sym = -1.0 if (j1-j2-m3) % 2 else 1.0
-    three_j_sym *= np.sqrt(fact(j1+j2-j3)*fact(j1-j2+j3)*fact(-j1+j2+j3)/fact(j1+j2+j3+1))
-    three_j_sym *= np.sqrt(fact(j1-m1)*fact(j1+m1)*fact(j2-m2)*fact(j2+m2)*fact(j3-m3)*fact(j3+m3))
-    t_sum = sum ( [(-1.0 if t % 2 else 1.0)/(fact(t)*fact(j3-j2+m1+t)*fact(j3-j1-m2+t)*fact(j1+j2-j3-t)*fact(j1-m1-t)*fact(j2+m2-t)) 
-                   for t in range(max(j2-j3-m1,j1-j3+m2,0),min(j1-m1,j2+m2,j1+j2-j3)+1)])
-    three_j_sym *= t_sum
-    return three_j_sym
-
-
-def clebsch_gordan(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
-    r"""
-    Calculate the Clebsh-Gordan coefficient
-    .. math::
-       \langle j_1 m_1 j_2 m_2 | j_3 m_3 \rangle = (-1)^{j_1-j_2+m_3} \sqrt{2 j_3 + 1}
-       \begin{pmatrix}
-         j_1 & j_2 & j_3\\
-         m_1 & m_2 & -m_3
-       \end{pmatrix}.
-    """
-    norm = np.sqrt(2*j3+1)*(-1 if j1-j2+m3 % 2 else 1)
-    return norm*three_j_symbol(j1, m1, j2, m2, j3, -m3)
-
-class YlmExpansion(object):
-
-    def __init__(self, l:int, data=dict[int,complex]):
-        self._l = l
-        self._data = data
-
-    def __getitem__(self, key:int|tuple) -> complex: return self._data.get(key,0.0)
-
-    def __iter__(self):
-        for x, y in self._data.items(): 
-            if isinstance(x, tuple): yield x[0], x[1], y
-            else: yield x, y
-
-    def __repr__(self) -> str:
-        return " ".join([f"+ {val}*Y({self._l},{key})" for (key, val) in self._data.items() ])
-
-    __str__ = __repr__
-
-    # multiplication
-    def __mul__(self, x)  -> YlmExpansion : return YlmExpansion(l=self._l, data={key : val*x for key, val in self._data.items() })
-    def __rmul__(self, x) -> YlmExpansion : return YlmExpansion(l=self._l,  data={key : val*x for key, val in self._data.items() })
-
-    # addition
-    def __add__(self, x:YlmExpansion) -> YlmExpansion : return YlmExpansion(l=self._l, data={key : self[key] + x[key] for key in set(self._data.keys()).union(x._data.keys()) })
-    def __sub__(self, x:YlmExpansion) -> YlmExpansion : return YlmExpansion(l=self._l, data={key : self[key] - x[key] for key in set(self._data.keys()).union(x._data.keys()) })
-
-def gaunt(m1:int, m2:int, m3:int) -> float:
-    l1, l2, l3 = 1,1,2
-    coeff = np.sqrt(45.0/np.arctan(1.0)/16.0)
-    a = three_j_symbol(l1, 0, l2, 0, l3, 0)
-    b = three_j_symbol(l1, m1, l2, m2, l3, m3)
-    return coeff*a*b
-
-def build_l2_core_states():
-    return [ YlmExpansion(l=1, data= { (+1,0) : 1.0 } ),
-                    YlmExpansion(l=1, data= { (+1,+1) : 1.0/np.sqrt(3), (0,0) : np.sqrt(2)/np.sqrt(3) }),
-                    YlmExpansion(l=1, data= { (-1,0) : 1.0/np.sqrt(3.), (0,+1): np.sqrt(2)/np.sqrt(3) }),
-                    YlmExpansion(l=1, data= { (-1,+1) : 1.0} )
-                  ]
-
+from .utils import gaunt
+from .ylmexpansion import YlmExpansion
 
 # D-orbital definitions
 DXY   = YlmExpansion(l=2, data= {-2 : +1.0j/np.sqrt(2.0), +2 : -1.0j/np.sqrt(2.0) })
@@ -91,6 +17,14 @@ DXZ   = YlmExpansion(l=2, data= {-1 : +1.0/np.sqrt(2.0),  +1 : -1.0/np.sqrt(2.0)
 EX = YlmExpansion(l=1, data = {-1 : 1.0/np.sqrt(2),  0 : 0.0, +1 : 1.0/np.sqrt(2) })
 EY = YlmExpansion(l=1, data = {-1 : 1.0j/np.sqrt(2), 0 : 0.0, +1 : 1.0j/np.sqrt(2) })
 EZ = YlmExpansion(l=1, data = {-1 : 0.0,             0 : 1.0, +1 : 0.0 })
+
+def build_l2_core_states():
+    return [ YlmExpansion(l=1, data= { (+1,0) : 1.0 } ),
+                    YlmExpansion(l=1, data= { (+1,+1) : 1.0/np.sqrt(3), (0,0) : np.sqrt(2)/np.sqrt(3) }),
+                    YlmExpansion(l=1, data= { (-1,0) : 1.0/np.sqrt(3.), (0,+1): np.sqrt(2)/np.sqrt(3) }),
+                    YlmExpansion(l=1, data= { (-1,+1) : 1.0} )
+                  ]
+
 
 def _dipole(core_state:YlmExpansion, state:YlmExpansion, polarization:YlmExpansion) -> complex:
     spin_flip = lambda m : -1 if abs(m) == 1 else 1
@@ -106,19 +40,12 @@ def _initial_to_final_transition_amplitude(core_states:list[YlmExpansion],
                           final:YlmExpansion, 
                           incoming_pol:YlmExpansion, 
                           outgoing_pol:YlmExpansion) -> float:
-    total_amp = 0.0+0.0j
-    #for core_state in core_states:
-    #    total_amp += np.conj(_dipole(core_state, final, outgoing_pol))*_dipole(core_state, initial, incoming_pol)
-    #return abs(total_amp)**2
     return abs( sum([np.conj(_dipole(core_state, final, outgoing_pol))*_dipole(core_state, initial, incoming_pol) for core_state in core_states]) )**2
 
 def _transition_amplitude(core_states:list[YlmExpansion], 
                           initial:YlmExpansion, 
                           pol:YlmExpansion) -> float:
-    total_amp = 0.0+0.0j
-    for core_state in core_states:
-        total_amp += _dipole(core_state, initial, pol)
-    return abs(total_amp)**2
+    return abs( sum(  [_dipole(core_state, initial, pol) for core_state in core_states]) )**2
 
 
 def rixs_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], incoming_pol:YlmExpansion, outgoing_pols:list[YlmExpansion]|YlmExpansion ) -> np.ndarray:
@@ -129,6 +56,13 @@ def rixs_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansio
         for initial in range(dim):
             for final in range(dim):
                 M[initial, final] += _initial_to_final_transition_amplitude(core_states, states[initial], states[final], incoming_pol, pol)
+    return M
+
+def xas_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], polarization:YlmExpansion):
+    dim = len(states)
+    M = np.zeros(dim, dtype=float)
+    for initial in range(dim):
+        M[initial] = _transition_amplitude(core_states, states[initial], polarization)
     return M
 
 def rixs_cross_section(e_mesh:np.ndarray, 
@@ -166,13 +100,6 @@ def rixs_cross_section(e_mesh:np.ndarray,
             cross_section[ie,je] = simpson(total, x=eocc)
     return x_grid, y_grid, cross_section
 
-def xas_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], polarization:YlmExpansion):
-    dim = len(states)
-    M = np.zeros(dim, dtype=float)
-    for initial in range(dim):
-        M[initial] = _transition_amplitude(core_states, states[initial], polarization)
-    return M
-
 def xas(e_mesh:np.ndarray, 
                        density_of_states:np.ndarray, 
                        pol_matrix_elements:np.ndarray,
@@ -200,5 +127,3 @@ def xas(e_mesh:np.ndarray,
             integrand    = rho_unocc[:, state]*pol_matrix_elements[state]*lorentz
             xas_data[ie] += simpson(integrand, x=eunocc)
     return Ein, xas_data
-
-

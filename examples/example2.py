@@ -1,9 +1,10 @@
 import time
 import numpy as np
-from dosrixs import *
-import matplotlib.pyplot as plt; plt.style.use('publish')
+import matplotlib.pyplot as plt;
 from matplotlib.colors import LinearSegmentedColormap
 def colormap(*args): return LinearSegmentedColormap.from_list('', list(args), N=256)
+
+from dosrixs import *
 
 def get_density_of_states(filename):
     data = np.loadtxt(filename)
@@ -13,7 +14,7 @@ def get_density_of_states(filename):
     return e, dos
 
 def plot_cross_section(ax, data, **kwargs):
-    ax.tick_params(which ='both', direction='out')
+    ax.tick_params(which ='both', direction='out', top=True, right=True)
     img = ax.pcolormesh(data[-3], data[-2],data[-1].T, **kwargs)
     cbar = fig.colorbar(img, ax=ax, location='top', orientation='horizontal', shrink=0.7)
     cbar.set_ticks([])
@@ -22,7 +23,7 @@ def plot_cross_section(ax, data, **kwargs):
 
 
 # compute RISX cross section using DOS and matrix elements
-e_mesh, dos = get_density_of_states('lvo-cubic-V3d-pdos.txt')
+e_mesh, dos = get_density_of_states('data/lvo-cubic-V3d-pdos.txt')
 
 print('--> computing rixs cross section', end = " ")
 start = time.perf_counter()
