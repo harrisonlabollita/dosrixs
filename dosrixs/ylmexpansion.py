@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 class YlmExpansion(object):
-
     def __init__(self, l:int, data=dict[int,complex]):
         self._l = l
         self._data = data

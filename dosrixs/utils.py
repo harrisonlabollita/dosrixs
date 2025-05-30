@@ -8,6 +8,23 @@ def print_matrix(A:np.ndarray)->None:
         print(fmt.format(*row) )
 
 def three_j_symbol(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
+    """_summary_
+
+    :param j1: _description_
+    :type j1: int
+    :param m1: _description_
+    :type m1: int
+    :param j2: _description_
+    :type j2: int
+    :param m2: _description_
+    :type m2: int
+    :param j3: _description_
+    :type j3: int
+    :param m3: _description_
+    :type m3: int
+    :return: _description_
+    :rtype: float
+    """
     if (m1+m2+m3 != 0 or
         m1 < -j1 or m1 > j1 or
         m2 < -j2 or m2 > j2 or
@@ -24,6 +41,17 @@ def three_j_symbol(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
     return three_j_sym
 
 def gaunt(m1:int, m2:int, m3:int) -> float:
+    """_summary_
+
+    :param m1: _description_
+    :type m1: int
+    :param m2: _description_
+    :type m2: int
+    :param m3: _description_
+    :type m3: int
+    :return: _description_
+    :rtype: float
+    """
     l1, l2, l3 = 1,1,2
     coeff = np.sqrt(45.0/np.arctan(1.0)/16.0)
     a = three_j_symbol(l1, 0, l2, 0, l3, 0)
