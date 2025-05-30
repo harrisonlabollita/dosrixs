@@ -208,7 +208,7 @@ def xas(e_mesh:np.ndarray,
                        pol_matrix_elements:np.ndarray,
                        Gamma:float = 0.6, 
                        Emin:float=0.0, 
-                       Emax:float=10.0) -> tuple[nd.array, np.ndarray]:
+                       Emax:float=10.0) -> tuple[np.ndarray, np.ndarray]:
     """Computes the x-ray absorption spectra (XAS) using the projected density of states and the polarization matrix elements.
 
     :param e_mesh: The energy grid (relative to the Fermi level) that the density of states is defined on.
