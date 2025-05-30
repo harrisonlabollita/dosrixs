@@ -37,11 +37,13 @@ def plot_xas(ax, data, **kwargs):
 
 # define orbital states
 d_orbitals = [DZ2, DXY, DX2Y2, DYZ, DXZ]
-core_states = build_l2_core_states()
+core_states = build_core_states()
 
 phi = np.deg2rad(180)
 theta = np.deg2rad(15)
 theta_prime = np.deg2rad(15-153)
+
+EX, EY, EZ = build_electric_fields(normal='z');
 
 s_pol      = np.sin(phi)*EX - np.cos(phi)*EY                                                # s, s'
 p_pol      = np.cos(theta)*EZ - np.sin(theta)*(np.cos(phi)*EX + np.sin(phi)*EY)             # p
@@ -101,5 +103,6 @@ ax[1,0].set_ylabel('Integrated RIXS'); ax[1,0].set_xlabel(r"E$_{\text{in}}$ (eV)
 ax[1,1]= plot_xas(ax[1,1], s_xas, lw=1, color='xkcd:blue', label='s')
 ax[1,1]= plot_xas(ax[1,1], p_xas, lw=1, color='xkcd:red', label='p')
 ax[1,1].set_xlabel(r"E (eV)"); ax[1,1].set_ylabel("XAS"); ax[1,1].legend(loc='best'); ax[1,1].set_ylim(0, )
-plt.subplots_adjust(hspace=0.25, wspace=0.3)
+plt.subplots_adjust(hspace=0.25, wspace=0.5)
+plt.savefig('data/example1-output.png', bbox_inches='tight')
 plt.show()
