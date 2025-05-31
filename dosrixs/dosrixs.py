@@ -55,7 +55,7 @@ def build_d_states(order:list[DORBITAL]=["dz2", "dxy", "dx2y2", "dxz", "dyz"]) -
     # if order not in valid: raise Exception(f"The argument {order} is not a valid option! The valid options are {valid}")
     # if order == 'wien2k': return [DZ2, DXY, DX2Y2, DYZ, DXZ]
 
-EDGE = Literal["l2"]
+EDGE = Literal["l2", "l3"]
 def build_core_states(edge:EDGE) -> list[YlmExpansion]: 
     """The core states for the a given RIXS edge process
 
@@ -65,6 +65,11 @@ def build_core_states(edge:EDGE) -> list[YlmExpansion]:
     :rtype: list[YlmExpansion]
     """
     if edge == "l2":
+        return [ 
+                 YlmExpansion(l=1, data= { (+1,+1) : np.sqrt(2.0)/np.sqrt(3), (0,0) : +1.0/np.sqrt(3) }), # 2p1/2
+                 YlmExpansion(l=1, data= { (-1,0)  : np.sqrt(2.0)/np.sqrt(3), (0,+1): +1.0/np.sqrt(3) }), # 2p-1/2
+                ]
+    elif edge == "l3":
         return [ YlmExpansion(l=1, data= { (+1,0)  : 1.0 } ),
                  YlmExpansion(l=1, data= { (+1,+1) : np.sqrt(2.0)/np.sqrt(3), (0,0) : +1.0/np.sqrt(3) }), # 2p1/2
                  YlmExpansion(l=1, data= { (-1,0)  : np.sqrt(2.0)/np.sqrt(3), (0,+1): +1.0/np.sqrt(3) }), # 2p-1/2
