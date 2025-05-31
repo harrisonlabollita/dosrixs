@@ -1,19 +1,16 @@
 from __future__ import annotations
 
 class YlmExpansion(object):
-    def __init__(self, l:int, data=dict[int,complex]):
-        self._l = l
-        self._data = data
+    def __init__(self, l:int, data:dict[tuple[int,int],complex]):
+        self._l:int = l
+        self._data = data #:dict[tuple[int,int],complex] = { (lidx,spin) : data.get((lidx,spin),0.0+0.0j) for lidx in range(-l, l+1) for spin in range(2)}
 
-    def __getitem__(self, key:int|tuple) -> complex: return self._data.get(key,0.0)
+    def __getitem__(self, key:tuple[int,int]) -> complex: return self._data[key]
 
-    def __iter__(self):
-        for x, y in self._data.items(): 
-            if isinstance(x, tuple): yield x[0], x[1], y
-            else: yield x, y
+    def __iter__(self:YlmExpansion):
+        for x, y in self._data.items(): yield x[0], x[1], y
 
-    def __repr__(self) -> str:
-        return " ".join([f"+ {val}*Y({self._l},{key})" for (key, val) in self._data.items() ])
+    def __repr__(self) -> str:  return " ".join([f"{val}*Y({self._l},{key})" for (key, val) in self._data.items() if val != 0.0+0.0j ])
 
     __str__ = __repr__
 
