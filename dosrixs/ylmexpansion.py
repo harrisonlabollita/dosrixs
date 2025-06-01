@@ -22,18 +22,13 @@ class YlmExpansion(object):
         for x, y in self._data.items(): yield x[0], x[1], y
 
     def __repr__(self) -> str:  
-        """_summary_
-
-        :return: _description_
-        :rtype: str
-        """
         idx2spin = lambda x : '↑' if x > 0 else '↓'
         return " ".join([f"{val}*|{self._l},{key[0]}>⊗|{idx2spin(key[1])}>" for (key, val) in self._data.items() if val != 0.0+0.0j ])
 
     __str__ = __repr__
 
     # multiplication
-    def __mul__(self, x)  -> YlmExpansion : return YlmExpansion(l=self._l, data={key : val*x for key, val in self._data.items() })
+    def __mul__(self,  x)  -> YlmExpansion : return YlmExpansion(l=self._l, data={key : val*x for key, val in self._data.items() })
     def __rmul__(self, x) -> YlmExpansion : return YlmExpansion(l=self._l,  data={key : val*x for key, val in self._data.items() })
 
     # addition

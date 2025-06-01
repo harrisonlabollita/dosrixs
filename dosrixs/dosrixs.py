@@ -1,5 +1,5 @@
-from __future__ import annotations
-from typing import Literal, cast
+from typing import Literal
+
 import numpy as np
 from scipy.integrate import simpson
 
@@ -32,6 +32,9 @@ def build_electric_fields(normal:str = 'z') -> tuple[YlmExpansion, YlmExpansion,
         raise Exception(f"The surface normal = {normal} is not a valid option.")
 
 DORBITAL = Literal["dxy", "dx2y2", "dz2", "dxz", "dyz"]
+
+EDGE = Literal["L2", "L3"]
+
 def _str2dorbital(d:DORBITAL) -> YlmExpansion:
     match d:
         case 'dxy':   return DXY
@@ -51,11 +54,6 @@ def build_d_states(order:list[DORBITAL]=["dz2", "dxy", "dx2y2", "dxz", "dyz"]) -
     :rtype: list[YlmExpansion]
     """
     return [ _str2dorbital(o) for o in order]
-    # valid:list[str] = ['wien2k']
-    # if order not in valid: raise Exception(f"The argument {order} is not a valid option! The valid options are {valid}")
-    # if order == 'wien2k': return [DZ2, DXY, DX2Y2, DYZ, DXZ]
-
-EDGE = Literal["L2", "L3"]
 
 def get_core_edge_quantum_numbers(edge:EDGE) -> dict[str, float]:
     """Get the quantum number corresponding to an edge.
@@ -66,7 +64,7 @@ def get_core_edge_quantum_numbers(edge:EDGE) -> dict[str, float]:
     :rtype: dict[str, float]
     """
     if   edge == "L2":  return {'n' : 2, 'l' : 1, 'j' : 0.5}
-    elif edge == "L3": return {'n' : 2, 'l' : 1, 'j' : 1.5}
+    elif edge == "L3":  return {'n' : 2, 'l' : 1, 'j' : 1.5}
 
 def build_core_states(edge:EDGE) -> list[YlmExpansion]: 
     """The core states for the a given RIXS edge process
@@ -106,29 +104,26 @@ def dipole(core_state:YlmExpansion, state:YlmExpansion, polarization:YlmExpansio
     :return: ⟨c|ε|d⟩
     :rtype: complex
     """
-    result = 0.0+0.0j
-    for (m_d, _, coeff_d) in state:
-        for (m_c, _, coeff_c) in core_state:
-            for (m_q, _, coeff_q) in polarization:
-                result += coeff_c*coeff_d*coeff_q*gaunt(m1=m_c,m2=m_q,m3=m_d)
-    return result
+    return sum( [ coeff_c*coeff_d*coeff_q*gaunt(m1=m_c,m2=m_q,m3=m_d) for (m_d, _, coeff_d) in state 
+                                                                      for (m_c, _, coeff_c) in core_state 
+                                                                      for (m_q, _, coeff_q) in polarization])
 
-# computes the transition amplitude | ∑c <f|ε'|c><c|ε|i>.|^2 
-# where ε, ε' are the incoming and outgoing photon polarizations,
-# |c> are the core states and |i>, |f> are the initial and 
-# final valence states. 
 def initial_to_final_transition_amplitude(core_states:list[YlmExpansion], 
                           initial:YlmExpansion, 
                           final:YlmExpansion, 
                           incoming_pol:YlmExpansion, 
                           outgoing_pol:YlmExpansion) -> float:
     r"""
+    Computes the transition amplitude:
     
-    .. math:: \sum_{c,\epsilon'} \langle f | \epsilon' | c \rangle \langle c | \epsilon | i \rangle
+    .. math:: \sum_{c,\epsilon'} \langle f | \epsilon' | c \rangle \langle c | \epsilon | i \rangle,
 
-
+    where ε, ε' are the incoming and outgoing photon polarizations,
+    |c> are the core states and |i>, |f> are the initial and 
+    final valence states. 
     """
-    return abs( sum([np.conj(dipole(core_state, final, outgoing_pol))*dipole(core_state, initial, incoming_pol) for core_state in core_states]) )**2
+    return abs( sum([np.conj(dipole(core_state, final, outgoing_pol))*dipole(core_state, initial, incoming_pol) 
+                     for core_state in core_states]) )**2
 
 # computes the transition amplitude | ∑c <i|ε|c> |^2 
 # where ε is the photon polarization, |c> are the core 
@@ -136,7 +131,8 @@ def initial_to_final_transition_amplitude(core_states:list[YlmExpansion],
 def transition_amplitude(core_states:list[YlmExpansion], 
                           initial:YlmExpansion, 
                           pol:YlmExpansion) -> float:
-    return abs( sum(  [dipole(core_state, initial, pol) for core_state in core_states]) )**2
+    return abs( sum(  [dipole(core_state, initial, pol) 
+                       for core_state in core_states]) )**2
 
 
 def rixs_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], 

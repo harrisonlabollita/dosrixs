@@ -1,7 +1,7 @@
 dosrixs
 ===============
 
-dosrixs.dosrixs
+dosrixs
 ----------------------
 
 .. automodule:: dosrixs.dosrixs
@@ -9,7 +9,7 @@ dosrixs.dosrixs
    :show-inheritance:
    :undoc-members:
 
-dosrixs.utils
+utils
 --------------------
 
 .. automodule:: dosrixs.utils
@@ -17,7 +17,7 @@ dosrixs.utils
    :show-inheritance:
    :undoc-members:
 
-dosrixs.ylmexpansion
+ylmexpansion
 ---------------------------
 
 .. automodule:: dosrixs.ylmexpansion
