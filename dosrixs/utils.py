@@ -1,6 +1,7 @@
 from __future__ import annotations 
 import numpy as np
 from scipy.special import factorial as fact
+from sympy.physics.quantum.cg import CG
 
 def print_matrix(A:np.ndarray)->None:
     for row in A:
@@ -38,9 +39,9 @@ def three_j_symbol(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
     t_sum = sum ( [(-1.0 if t % 2 else 1.0)/(fact(t)*fact(j3-j2+m1+t)*fact(j3-j1-m2+t)*fact(j1+j2-j3-t)*fact(j1-m1-t)*fact(j2+m2-t)) 
                    for t in range(max(j2-j3-m1,j1-j3+m2,0),min(j1-m1,j2+m2,j1+j2-j3)+1)])
     three_j_sym *= t_sum
-    return three_j_sym
+    return float(three_j_sym)
 
-def gaunt(m1:int, m2:int, m3:int) -> float:
+def gaunt(l1:int=1, l2:int=1, l3:int=2, m1:int=0, m2:int=0, m3:int=0) -> float:
     """_summary_
 
     :param m1: _description_
@@ -52,9 +53,10 @@ def gaunt(m1:int, m2:int, m3:int) -> float:
     :return: _description_
     :rtype: float
     """
-    l1, l2, l3 = 1,1,2
     coeff = np.sqrt(45.0/np.arctan(1.0)/16.0)
     a = three_j_symbol(l1, 0, l2, 0, l3, 0)
     b = three_j_symbol(l1, m1, l2, m2, l3, m3)
     return coeff*a*b
 
+def gaunt_sympy(l1:float, m1:float, l2:float, m2:float, l3:float, m3:float) -> complex:
+    return complex(CG(l1, m1, l2, m2, l3, m3).doit())

@@ -38,7 +38,7 @@ def plot_xas(ax, data, **kwargs):
 
 # define orbital states
 d_orbitals = build_d_states()
-core_states = build_core_states('l2')
+core_states = build_core_states('L3')
 
 phi = np.deg2rad(180)
 theta = np.deg2rad(15)

@@ -9,5 +9,5 @@ setup(name="dosrixs",
       url="https://github.com/harrisonlabollita/dosrixs",
       packages=['dosrixs'],
       license='MIT',
-      install_requires=["numpy", "scipy"]
+      install_requires=["numpy", "scipy", "sympy"]
       )

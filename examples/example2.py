@@ -15,7 +15,7 @@ def get_density_of_states(filename):
 
 def plot_cross_section(ax, data, **kwargs):
     ax.tick_params(which ='both', direction='out', top=True, right=True)
-    img = ax.pcolormesh(data[-3], data[-2],data[-1].T, **kwargs)
+    img = ax.pcolormesh(data[-3], data[-2],data[-1][0].T, **kwargs)
     cbar = fig.colorbar(img, ax=ax, location='top', orientation='horizontal', shrink=0.7)
     cbar.set_ticks([])
     cbar.outline.set_visible(False)
