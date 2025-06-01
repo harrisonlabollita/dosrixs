@@ -1,16 +1,32 @@
 from __future__ import annotations
 
 class YlmExpansion(object):
+    r"""An abstract representation of a state in a basis of spherical harmonics. A state is represented as:
+    
+    .. math::
+        |\psi \rangle = \sum_{m,\sigma}c_{m\sigma}|l, m\rangle\otimes|\sigma\rangle
+
+    :param l: angular quantum number
+    :type l: int
+    :param data: coefficients and basis functions represented as a dictionary
+    :type data: dict[tuple[int,int],complex]
+    """
     def __init__(self, l:int, data:dict[tuple[int,int],complex]):
+        """Constructor method"""
         self._l:int = l
-        self._data = data #:dict[tuple[int,int],complex] = { (lidx,spin) : data.get((lidx,spin),0.0+0.0j) for lidx in range(-l, l+1) for spin in range(2)}
+        self._data:dict[tuple[int,int],complex]  = data
 
     def __getitem__(self, key:tuple[int,int]) -> complex: return self._data[key]
 
-    def __iter__(self:YlmExpansion):
+    def __iter__(self:YlmExpansion): 
         for x, y in self._data.items(): yield x[0], x[1], y
 
     def __repr__(self) -> str:  
+        """_summary_
+
+        :return: _description_
+        :rtype: str
+        """
         idx2spin = lambda x : '↑' if x > 0 else '↓'
         return " ".join([f"{val}*|{self._l},{key[0]}>⊗|{idx2spin(key[1])}>" for (key, val) in self._data.items() if val != 0.0+0.0j ])
 

@@ -58,6 +58,13 @@ def build_d_states(order:list[DORBITAL]=["dz2", "dxy", "dx2y2", "dxz", "dyz"]) -
 EDGE = Literal["L2", "L3"]
 
 def get_core_edge_quantum_numbers(edge:EDGE) -> dict[str, float]:
+    """Get the quantum number corresponding to an edge.
+
+    :param edge: Core edge
+    :type edge: EDGE
+    :return: quantum numbers for edge
+    :rtype: dict[str, float]
+    """
     if   edge == "L2":  return {'n' : 2, 'l' : 1, 'j' : 0.5}
     elif edge == "L3": return {'n' : 2, 'l' : 1, 'j' : 1.5}
 
@@ -86,7 +93,19 @@ def build_core_states(edge:EDGE) -> list[YlmExpansion]:
 # computes the integral ∫ dΩ Y(lc, mc)*Y(l=1,mq)*Y(ld, md), which
 # reduces to gaunt coefficients, G(mc, mq, md). 
 def dipole(core_state:YlmExpansion, state:YlmExpansion, polarization:YlmExpansion) -> complex:
-    # spin_flip = lambda m : -1 if abs(m) == 1 else 1
+    r"""Compute
+
+    .. math:: \langle c | \epsilon | d \rangle
+
+    :param core_state: The core state |c⟩
+    :type core_state: YlmExpansion
+    :param state: The valence state |d⟩
+    :type state: YlmExpansion
+    :param polarization: The photon polarization ε
+    :type polarization: YlmExpansion
+    :return: ⟨c|ε|d⟩
+    :rtype: complex
+    """
     result = 0.0+0.0j
     for (m_d, _, coeff_d) in state:
         for (m_c, _, coeff_c) in core_state:
@@ -103,6 +122,12 @@ def initial_to_final_transition_amplitude(core_states:list[YlmExpansion],
                           final:YlmExpansion, 
                           incoming_pol:YlmExpansion, 
                           outgoing_pol:YlmExpansion) -> float:
+    r"""
+    
+    .. math:: \sum_{c,\epsilon'} \langle f | \epsilon' | c \rangle \langle c | \epsilon | i \rangle
+
+
+    """
     return abs( sum([np.conj(dipole(core_state, final, outgoing_pol))*dipole(core_state, initial, incoming_pol) for core_state in core_states]) )**2
 
 # computes the transition amplitude | ∑c <i|ε|c> |^2 

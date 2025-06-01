@@ -9,22 +9,7 @@ def print_matrix(A:np.ndarray)->None:
         print(fmt.format(*row) )
 
 def three_j_symbol(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
-    """_summary_
-
-    :param j1: _description_
-    :type j1: int
-    :param m1: _description_
-    :type m1: int
-    :param j2: _description_
-    :type j2: int
-    :param m2: _description_
-    :type m2: int
-    :param j3: _description_
-    :type j3: int
-    :param m3: _description_
-    :type m3: int
-    :return: _description_
-    :rtype: float
+    """Internal function to compute Wigner-3j.
     """
     if (m1+m2+m3 != 0 or
         m1 < -j1 or m1 > j1 or
@@ -42,15 +27,23 @@ def three_j_symbol(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
     return float(three_j_sym)
 
 def gaunt(l1:int=1, l2:int=1, l3:int=2, m1:int=0, m2:int=0, m3:int=0) -> float:
-    """_summary_
+    """Compute Gaunt coefficients:
 
-    :param m1: _description_
-    :type m1: int
-    :param m2: _description_
-    :type m2: int
-    :param m3: _description_
-    :type m3: int
-    :return: _description_
+    .. math:: G(l_{1}, l_{2}, l_{3}, m_{1}, m_{2}, m_{3}) = \int d \Omega Y_{l_{1}}^{m_{1}}(\Omega)Y_{l_{2}}^{m_{2}}(\Omega)Y_{l_{3}}^{m_{3}}(\Omega) 
+
+    :param l1: angular quantum number, defaults to 1
+    :type l1: int, optional
+    :param l2: angular quantum number, defaults to 1
+    :type l2: int, optional
+    :param l3: total angular momentum, defaults to 2
+    :type l3: int, optional
+    :param m1: magnetic quantum number, defaults to 0
+    :type m1: int, optional
+    :param m2: magnetic quantum number, defaults to 0
+    :type m2: int, optional
+    :param m3: total magnetic quanutm number, defaults to 0
+    :type m3: int, optional
+    :return: Gaunt coefficient
     :rtype: float
     """
     coeff = np.sqrt(45.0/np.arctan(1.0)/16.0)
@@ -59,4 +52,5 @@ def gaunt(l1:int=1, l2:int=1, l3:int=2, m1:int=0, m2:int=0, m3:int=0) -> float:
     return coeff*a*b
 
 def gaunt_sympy(l1:float, m1:float, l2:float, m2:float, l3:float, m3:float) -> complex:
+    """wrapper around sympy.physics.quantum.cg"""
     return complex(CG(l1, m1, l2, m2, l3, m3).doit())

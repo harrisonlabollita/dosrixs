@@ -24,11 +24,3 @@ dosrixs.ylmexpansion
    :members:
    :show-inheritance:
    :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: dosrixs
-   :members:
-   :show-inheritance:
-   :undoc-members:

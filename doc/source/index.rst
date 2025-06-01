@@ -11,4 +11,5 @@ dosrixs documentation
    :maxdepth: 2
    :caption: API Documentation
 
+   intro
    dosrixs
