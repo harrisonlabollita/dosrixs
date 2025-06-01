@@ -4,7 +4,7 @@ from dosrixs.utils import gaunt
 
 class TestGaunt(unittest.TestCase):
     def test_gaunt_coefficients(self):
-        ref_data = np.array( [ [-1, -1,  -2,  0.000000 ],
+        ref_data = np.array( [ [ -1, -1, -2,  0.000000 ],
                                [ -1, -1, -1,  0.000000 ],
                                [ -1, -1,  0,  0.000000 ],
                                [ -1, -1,  1,  0.000000 ],
@@ -49,5 +49,5 @@ class TestGaunt(unittest.TestCase):
                                [  1,  1,  0,  0.000000 ],
                                [  1,  1,  1,  0.000000 ],
                                [  1,  1,  2,  0.000000 ]])
-        data = np.asarray([ [m1, m2, m3, gaunt(m1, m2, m3)] for m1 in [-1,0,1] for m2 in [-1,0,1] for m3 in [-2,-1,0,1,2]])
-        np.testing.assert_allclose(ref_data, data, rtol=1e-5, atol=1e-5)
+        data = np.asarray([ [m1, m2, m3, gaunt(m1=m1, m2=m2, m3=m3)] for m1 in [-1,0,1] for m2 in [-1,0,1] for m3 in [-2,-1,0,1,2]])
+        np.testing.assert_allclose(ref_data[:,-1], data[:,-1], rtol=1e-5, atol=1e-5)

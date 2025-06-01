@@ -1,7 +1,6 @@
 from __future__ import annotations 
 import numpy as np
 from scipy.special import factorial as fact
-from sympy.physics.quantum.cg import CG
 
 def print_matrix(A:np.ndarray)->None:
     for row in A:
@@ -27,7 +26,7 @@ def three_j_symbol(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
     return float(three_j_sym)
 
 def gaunt(l1:int=1, l2:int=1, l3:int=2, m1:int=0, m2:int=0, m3:int=0) -> float:
-    """Compute Gaunt coefficients:
+    r"""Compute Gaunt coefficients:
 
     .. math:: G(l_{1}, l_{2}, l_{3}, m_{1}, m_{2}, m_{3}) = \int d \Omega Y_{l_{1}}^{m_{1}}(\Omega)Y_{l_{2}}^{m_{2}}(\Omega)Y_{l_{3}}^{m_{3}}(\Omega) 
 
@@ -52,5 +51,6 @@ def gaunt(l1:int=1, l2:int=1, l3:int=2, m1:int=0, m2:int=0, m3:int=0) -> float:
     return coeff*a*b
 
 def gaunt_sympy(l1:float, m1:float, l2:float, m2:float, l3:float, m3:float) -> complex:
+    from sympy.physics.quantum.cg import CG
     """wrapper around sympy.physics.quantum.cg"""
     return complex(CG(l1, m1, l2, m2, l3, m3).doit())
