@@ -67,24 +67,26 @@ class TestMatrixElements(unittest.TestCase):
 
     def test_rixs_matrix_elements(self):
 
-        # define orbitals and core states
-        d_orbitals = build_d_states(order=['dxy','dxz', 'dz2', 'dyz', 'dx2y2'])
-        core_states = build_core_states('L3')
+        def calculate_matrix_elements(theta, theta_prime):
 
-        phi = np.deg2rad(180)
-        theta = np.deg2rad(45)
-        theta_prime = np.deg2rad(45)
+            # define orbitals and core states
+            d_orbitals = build_d_states(order=['dxy','dxz', 'dz2', 'dyz', 'dx2y2'])
+            core_states = build_core_states('L3')
 
-        EX, EY, EZ = build_electric_fields(normal='z')
+            phi = np.deg2rad(180)
+            EX, EY, EZ = build_electric_fields(normal='z')
+            s_pol      = np.sin(phi)*EX - np.cos(phi)*EY                                                # s, s'
+            p_pol      = np.cos(theta)*EZ + np.sin(theta)*(np.cos(phi)*EX + np.sin(phi)*EY)             # p
+            pprime_pol = np.cos(theta_prime)*EZ + np.sin(theta_prime)*(np.cos(phi)*EX + np.sin(phi)*EY) # p'
+            return rixs_matrix_elements(d_orbitals, core_states, [s_pol, p_pol], [s_pol, pprime_pol])
 
-        s_pol      = np.sin(phi)*EX - np.cos(phi)*EY                                                # s, s'
-        p_pol      = np.cos(theta)*EZ + np.sin(theta)*(np.cos(phi)*EX + np.sin(phi)*EY)             # p
-        pprime_pol = np.cos(theta_prime)*EZ + np.sin(theta_prime)*(np.cos(phi)*EX + np.sin(phi)*EY) # p'
+        for (theta, thetap) in zip([10,20,45,50,90], [90,50,45,20,10]):
+            theta = np.deg2rad(theta)
+            theta_prime = np.deg2rad(thetap)
 
-        ref_pol_rixs = generate_reference_matrix_elements(theta, theta_prime)
-        pol_rixs     = rixs_matrix_elements(d_orbitals, core_states, [s_pol, p_pol], [s_pol, pprime_pol])
-
-        np.testing.assert_allclose(ref_pol_rixs,pol_rixs, rtol=1e-12, atol=1e-12)
+            ref_pol_rixs = generate_reference_matrix_elements(theta, theta_prime)
+            pol_rixs = calculate_matrix_elements(theta, theta_prime)
+            np.testing.assert_allclose(ref_pol_rixs,pol_rixs, rtol=1e-12, atol=1e-12)
 
 # RED = "\033[91m"
 # GREEN = "\033[92m"
