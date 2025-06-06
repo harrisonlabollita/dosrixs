@@ -76,37 +76,18 @@ def build_core_states(edge:EDGE) -> list[YlmExpansion]:
     """
     quantum_numbers = get_core_edge_quantum_numbers(edge)
     l, j, s = int(quantum_numbers['l']), quantum_numbers['j'], 0.5
-
     spin2idx = lambda x : 0 if x > 0 else 1
-
+    loop = int(j*2)
     core_states:list[YlmExpansion] = []
-    for mj in [x for x in np.arange(-j, j+s, s) if x != 0]:
+    for tmj in [x for x in np.arange(-loop, loop+1, 2) if x != 0]:
+        mj= 0.5*tmj
         data = {}
         for m in range(-l, l+1):
             for spin in [-s, s]:
                 data[(m, spin2idx(spin))] = gaunt_sympy(l, m, s, spin, j, mj)
+        if data == {}: continue
         core_states.append(YlmExpansion(l=l, data=data))
     return core_states
-
-# computes the integral ∫ dΩ Y(lc, mc)*Y(l=1,mq)*Y(ld, md), which
-# reduces to gaunt coefficients, G(mc, mq, md). 
-def dipole(core_state:YlmExpansion, state:YlmExpansion, polarization:YlmExpansion) -> complex:
-    r"""Compute
-
-    .. math:: \langle c | \epsilon | d \rangle
-
-    :param core_state: The core state |c⟩
-    :type core_state: YlmExpansion
-    :param state: The valence state |d⟩
-    :type state: YlmExpansion
-    :param polarization: The photon polarization ε
-    :type polarization: YlmExpansion
-    :return: ⟨c|ε|d⟩
-    :rtype: complex
-    """
-    return sum( [ coeff_c*coeff_d*coeff_q*gaunt(m1=m_c,m2=m_q,m3=m_d) for (m_d, _, coeff_d) in state 
-                                                                      for (m_c, _, coeff_c) in core_state 
-                                                                      for (m_q, _, coeff_q) in polarization])
 
 def initial_to_final_transition_amplitude(core_states:list[YlmExpansion], 
                           initial:YlmExpansion, 
@@ -116,28 +97,37 @@ def initial_to_final_transition_amplitude(core_states:list[YlmExpansion],
     r"""
     Computes the transition amplitude:
     
-    .. math:: \sum_{c,\epsilon'} \langle f | \epsilon' | c \rangle \langle c | \epsilon | i \rangle,
+    .. math:: \sum_{c} \langle f | \epsilon' | c \rangle \langle c | \epsilon | i \rangle,
 
     where ε, ε' are the incoming and outgoing photon polarizations,
     |c> are the core states and |i>, |f> are the initial and 
     final valence states. 
     """
-    return abs( sum([np.conj(dipole(core_state, final, outgoing_pol))*dipole(core_state, initial, incoming_pol) 
-                     for core_state in core_states]) )**2
+    total= np.zeros((2,2),dtype=complex)
+    for sp1 in range(2):
+        for sp2 in range(2):
+            for core in core_states:
+                outdipole = 0
+                for m in final.magnetic_quantum_numbers:
+                    for l in core.magnetic_quantum_numbers:
+                        for (mq, _, coeffq) in outgoing_pol:
+                            outdipole += final[(m, sp2)]*core[(l, sp2)]*coeffq*gaunt(m1=l, m2=mq, m3=m)
+                indipole = 0
+                for m in initial.magnetic_quantum_numbers:
+                    for l in  core.magnetic_quantum_numbers:
+                        for (mq, _, coeffq) in incoming_pol:
+                            indipole += initial[(m, sp1)]*core[(l, sp1)]*coeffq*gaunt(m1=l, m2=mq, m3=m)
+                total[sp1,sp2] += np.conj(outdipole) *indipole
+    return float(np.sum(np.abs(total)**2))
 
-# computes the transition amplitude | ∑c <i|ε|c> |^2 
-# where ε is the photon polarization, |c> are the core 
-# states and |i> is valence state. 
-def transition_amplitude(core_states:list[YlmExpansion], 
-                          initial:YlmExpansion, 
-                          pol:YlmExpansion) -> float:
-    return abs( sum(  [dipole(core_state, initial, pol) 
-                       for core_state in core_states]) )**2
 
 
 def rixs_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], 
                          incoming_pols:list[YlmExpansion]|YlmExpansion, outgoing_pols:list[YlmExpansion]|YlmExpansion ) -> np.ndarray:
-    """Compute the RIXS matrix elements at fixed incoming photon polarization and summed over outgoing photon polarizations.
+    r"""Compute the RIXS matrix elements at fixed incoming photon polarization and summed over outgoing photon polarizations:
+
+    .. math:: M_{\epsilon, i, f} = \sum_{\epsilon', c, \sigma, \sigma'} \Big | \langle f \sigma' | \epsilon' | c \rangle \langle c | \epsilon | i \sigma \rangle \Big |^{2} 
+
 
     :param states: a list of valence states.
     :type states: list[YlmExpansion]
@@ -157,10 +147,10 @@ def rixs_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansio
     dim_pols  = len(incoming_pols)
     dim_states = len(states)
     M = np.zeros((dim_pols, dim_states, dim_states), dtype=float)
-    for (in_pol, incoming) in enumerate(incoming_pols):
-        for outgoing in outgoing_pols: 
-            for initial in range(dim_states):
-                for final in range(dim_states):
+    for initial in range(dim_states):
+        for final in range(dim_states):
+            for (in_pol, incoming) in enumerate(incoming_pols):
+                for outgoing in outgoing_pols: 
                     M[in_pol, initial, final] += initial_to_final_transition_amplitude(core_states, states[initial], states[final], incoming, outgoing)
     return M
 
@@ -181,7 +171,7 @@ def xas_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion
     M = np.zeros((dim_pols, dim_states), dtype=float)
     for ip, pol in enumerate(polarizations):
         for initial in range(dim_states):
-            M[ip, initial] = transition_amplitude(core_states, states[initial], pol)
+            M[ip, initial] = initial_to_final_transition_amplitude(core_states, states[initial], states[initial],pol, pol)
     return M
 
 def rixs_cross_section(e_mesh:np.ndarray, 
@@ -270,9 +260,7 @@ def xas(e_mesh:np.ndarray,
     assert dim_states == dim_pol_el, "The dimension of the density of states is not equal to the number of polarization elements ({dim_states} != {dim_pol})"
 
     dim_pol = pol_matrix_elements.shape[0]
-    #pol_matrix_elements = pol_matrix_elements if pol_matrix_elements is not None else np.eye(dim_states) # check for correctness
 
-    below_zero = np.where(e_mesh < 0.0)[0]
     above_zero = np.where(e_mesh > 0.0)[0]
 
     eunocc = e_mesh[above_zero]
