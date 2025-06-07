@@ -87,3 +87,6 @@ class TestMatrixElements(unittest.TestCase):
                 pprime_pol = np.cos(theta_prime)*EZ + np.sin(theta_prime)*(np.cos(phi)*EX + np.sin(phi)*EY) # p'
                 pol_rixs     = _calculate_matrix_elements(p_pol, [s_pol, pprime_pol])
                 np.testing.assert_allclose(self.ref_pol_rixs_data[(th,thp)][1], pol_rixs[0], rtol=1e-12, atol=1e-12)
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
