@@ -5,7 +5,7 @@ Here we provide a few examples to see how to build a RIXS and/or XAS calculation
 ```python
 # define orbital states
 d_orbitals = build_d_states()
-core_states = build_core_states('l2')
+core_states = build_core_states('L2')
 
 # define incoming and outgoing polarizations for normal=z geometry
 phi = np.deg2rad(180)
