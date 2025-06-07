@@ -81,10 +81,11 @@ def build_core_states(edge:EDGE) -> list[YlmExpansion]:
     loop = int(j*2)
     core_states:list[YlmExpansion] = []
     for tmj in [x for x in np.arange(-loop, loop+1, 2) if x != 0]:
-        mj= 0.5*tmj
+        mj= float(0.5*tmj)
         data = {}
         for m in range(-l, l+1):
             for spin in [-s, s]:
+                print(l, m, s, spin, j, mj)
                 data[(m, spin2idx(spin))] = gaunt_sympy(l, m, s, spin, j, mj)
         core_states.append(YlmExpansion(l=l, data=data))
     return core_states
