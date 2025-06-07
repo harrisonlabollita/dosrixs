@@ -1,4 +1,5 @@
 from __future__ import annotations 
+from functools import lru_cache
 import numpy as np
 from scipy.special import factorial as fact
 
@@ -25,6 +26,7 @@ def three_j_symbol(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
     three_j_sym *= t_sum
     return float(three_j_sym)
 
+@lru_cache
 def gaunt(l1:int=1, l2:int=1, l3:int=2, m1:int=0, m2:int=0, m3:int=0) -> float:
     r"""Compute Gaunt coefficients:
 

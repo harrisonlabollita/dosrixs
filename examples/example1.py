@@ -95,5 +95,5 @@ ax[1,1]= plot_xas(ax[1,1], [xray[0], xray[1][0]], lw=1, color='xkcd:blue', label
 ax[1,1]= plot_xas(ax[1,1], [xray[0], xray[1][1]], lw=1, color='xkcd:red', label='p')
 ax[1,1].set_xlabel(r"E (eV)"); ax[1,1].set_ylabel("XAS"); ax[1,1].legend(loc='best'); ax[1,1].set_ylim(0, ); ax[1,1].set_yticklabels([])
 plt.subplots_adjust(hspace=0.25, wspace=0.5)
-plt.savefig('data/example1-output.png', bbox_inches='tight')
-#plt.show()
+#plt.savefig('data/example1-output.png', bbox_inches='tight')
+plt.show()

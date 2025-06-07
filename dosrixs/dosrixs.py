@@ -1,4 +1,5 @@
 from typing import Literal
+from itertools import product
 
 import numpy as np
 from scipy.integrate import simpson
@@ -104,20 +105,17 @@ def initial_to_final_transition_amplitude(core_states:list[YlmExpansion],
     final valence states. 
     """
     total= np.zeros((2,2),dtype=complex)
-    for sp1 in range(2):
-        for sp2 in range(2):
-            for core in core_states:
-                outdipole = 0
-                for m in final.magnetic_quantum_numbers:
-                    for l in core.magnetic_quantum_numbers:
-                        for (mq, _, coeffq) in outgoing_pol:
-                            outdipole += final[(m, sp2)]*core[(l, sp2)]*coeffq*gaunt(m1=l, m2=mq, m3=m)
-                indipole = 0
-                for m in initial.magnetic_quantum_numbers:
-                    for l in  core.magnetic_quantum_numbers:
-                        for (mq, _, coeffq) in incoming_pol:
-                            indipole += initial[(m, sp1)]*core[(l, sp1)]*coeffq*gaunt(m1=l, m2=mq, m3=m)
-                total[sp1,sp2] += np.conj(outdipole) *indipole
+    for (sp1, sp2) in product(range(2), range(2)):
+        for core in core_states:
+            dipole_out = sum(final[(m, sp2)]*core[(l, sp2)]*coeffq*gaunt(m1=l, m2=mq, m3=m)
+                               for m in final.magnetic_quantum_numbers
+                               for l in core.magnetic_quantum_numbers
+                               for (mq, _, coeffq) in outgoing_pol)
+            dipole_in = sum(initial[(m, sp1)]*core[(l, sp1)]*coeffq*gaunt(m1=l, m2=mq, m3=m)
+                               for m in initial.magnetic_quantum_numbers
+                               for l in  core.magnetic_quantum_numbers
+                               for (mq, _, coeffq) in incoming_pol)
+            total[sp1,sp2] += np.conj(dipole_out)*dipole_in
     return float(np.sum(np.abs(total)**2))
 
 
@@ -147,11 +145,10 @@ def rixs_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansio
     dim_pols  = len(incoming_pols)
     dim_states = len(states)
     M = np.zeros((dim_pols, dim_states, dim_states), dtype=float)
-    for initial in range(dim_states):
-        for final in range(dim_states):
-            for (in_pol, incoming) in enumerate(incoming_pols):
-                for outgoing in outgoing_pols: 
-                    M[in_pol, initial, final] += initial_to_final_transition_amplitude(core_states, states[initial], states[final], incoming, outgoing)
+    for initial, final in product(range(dim_states), range(dim_states)):
+        for (in_pol, incoming) in enumerate(incoming_pols):
+            for outgoing in outgoing_pols: 
+                M[in_pol, initial, final] += initial_to_final_transition_amplitude(core_states, states[initial], states[final], incoming, outgoing)
     return M
 
 def xas_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], polarizations:list[YlmExpansion]) -> np.ndarray:
@@ -216,19 +213,35 @@ def rixs_cross_section(e_mesh:np.ndarray,
     Eloss = e_mesh[(e_mesh > 0.0) & (e_mesh < Emax)]
 
     x_grid, y_grid = np.meshgrid(Ein, Eloss)
-    cross_section = np.zeros((dim_pols, len(Ein), len(Eloss)), dtype=float)
 
-    for (ie, ein) in enumerate(Ein):
-        for (je, eloss) in enumerate(Eloss):
-            e_interp = eocc + eloss
-            eout = ein - eloss
-            lorentz = 0.5*Gamma / ( (eocc - eout)**2 + 0.25*Gamma**2 )
-            rho_shifted = np.stack([np.interp(e_interp, e_mesh[above_zero], density_of_states[above_zero, initial], left=0.0, right=0.0) 
-                                     for initial in range(dim_states)], axis=1)
-            integrand = np.einsum('ei,ef,e->eif', rho_shifted, rho_occ, lorentz)
-            for pol in range(dim_pols):
-                total = np.einsum('eif,if->e', integrand, pol_matrix_elements[pol])
-                cross_section[pol, ie,je] = simpson(total, x=eocc)
+    e_interp_all = eocc[:, None] + Eloss[None, :]
+    eout_all = Ein[:, None] - Eloss[None, :]
+    lorentz = 0.5 * Gamma / ((eocc[:,None, None]-eout_all[None, :, :])**2 + 0.25*Gamma**2)
+    rho_shifted_all = np.empty((len(eocc), len(Eloss), dim_states))
+    for i in range(dim_states):
+        interp = np.interp(e_interp_all.flatten(), e_mesh[above_zero],
+                           density_of_states[above_zero,i],
+                           left=0.0, right=0.0)
+        rho_shifted_all[:,:,i] = interp.reshape(len(eocc), len(Eloss))
+
+    intergrand = np.einsum('ef, eli, ekl->eklif', rho_occ, rho_shifted_all, lorentz)
+    cross_section = np.empty((dim_pols, len(Ein), len(Eloss)), dtype=float)
+    for pol in range(dim_pols):
+        weighted = np.einsum('elkif,if->elk', intergrand, pol_matrix_elements[pol])
+        cross_section[pol] = simpson(weighted, x=eocc, axis=0)
+
+    # for (ie, ein) in enumerate(Ein):
+    #     for (je, eloss) in enumerate(Eloss):
+    #         e_interp = eocc + eloss
+    #         eout = ein - eloss
+    #         lorentz = 0.5*Gamma / ( (eocc - eout)**2 + 0.25*Gamma**2 )
+    #         rho_shifted = np.stack([np.interp(e_interp, e_mesh[above_zero], density_of_states[above_zero, initial], left=0.0, right=0.0) 
+    #                                  for initial in range(dim_states)], axis=1)
+    #         integrand = np.einsum('ei,ef,e->eif', rho_shifted, rho_occ, lorentz)
+    #         for pol in range(dim_pols):
+    #             total = np.einsum('eif,if->e', integrand, pol_matrix_elements[pol])
+    #             cross_section[pol, ie,je] = simpson(total, x=eocc)
+
     return x_grid, y_grid, cross_section
 
 def xas(e_mesh:np.ndarray, 
