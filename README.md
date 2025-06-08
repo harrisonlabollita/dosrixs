@@ -53,6 +53,11 @@ $$ \langle Y_{\ell_{c}}^{m_{c}}| \hat{r_{q}} | Y_{\ell_{d}}^{m_{d}} \rangle = \i
 ## Contributing
 We welcome contributions! Please open issues for bugs or feature requests, or submit pull requests.
 
+## References
+To cite this work, please include a reference to this GitHub repository, and cite the following paper:
+
+M. R. Norman, A. S. Botana, J. Karp, A. Hampel, H. LaBollita, A. J. Millis, G. Fabbris, Y. Shen, and M. P. M. Dean. "Orbital polarization, charge-transfer, and fluorescence in reduced-valence nickelates." Phys. Rev. B 107, 165124 (2023).
+
 
 ## License
 

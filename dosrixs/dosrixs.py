@@ -198,49 +198,32 @@ def rixs_cross_section(e_mesh:np.ndarray,
 
     pol_matrix_elements = pol_matrix_elements if pol_matrix_elements is not None else np.eye(dim_states).reshape(1, dim_states, dim_states) # check for correctness
 
-    dim_pols = pol_matrix_elements.shape[0]
     dim_pol_mat = pol_matrix_elements.shape[1]
-    assert dim_states == dim_pol_mat, "The dimension of the density of states is not equal to the number of polarization elements ({dim_states} != {dim_pol})"
+    if dim_states != dim_pol_mat:
+        raise Exception(f"The dimension of the density of states is not equal to the number of polarization elements ({dim_states} != {dim_pol_mat})")
 
-    below_zero = np.where(e_mesh < 0.0)[0]
-    above_zero = np.where(e_mesh > 0.0)[0]
+    below_zero, above_zero = np.where(e_mesh < 0.0)[0], np.where(e_mesh > 0.0)[0]
 
-    eocc = e_mesh[below_zero]
-    rho_occ = density_of_states[below_zero, :]
+    eocc, rho_occ = e_mesh[below_zero], density_of_states[below_zero, :]
 
-    Ein   = e_mesh[(e_mesh > Emin) & (e_mesh < Emax)]
-    Eloss = e_mesh[(e_mesh > 0.0) & (e_mesh < Emax)]
+    Ein, Eloss = e_mesh[(e_mesh > Emin) & (e_mesh < Emax)], e_mesh[(e_mesh > 0.0) & (e_mesh < Emax)]
 
     x_grid, y_grid = np.meshgrid(Ein, Eloss)
 
-    e_interp_all = eocc[:, None] + Eloss[None, :]
-    eout_all = Ein[:, None] - Eloss[None, :]
+    e_interp_all, eout_all = eocc[:, None] + Eloss[None, :], Ein[:, None] - Eloss[None, :]
+
     lorentz = 0.5 * Gamma / ((eocc[:,None, None]-eout_all[None, :, :])**2 + 0.25*Gamma**2)
-    rho_shifted_all = np.empty((len(eocc), len(Eloss), dim_states))
-    for i in range(dim_states):
-        interp = np.interp(e_interp_all.flatten(), e_mesh[above_zero],
-                           density_of_states[above_zero,i],
-                           left=0.0, right=0.0)
-        rho_shifted_all[:,:,i] = interp.reshape(len(eocc), len(Eloss))
 
-    intergrand = np.einsum('ef, eli, ekl->eklif', rho_occ, rho_shifted_all, lorentz)
-    cross_section = np.empty((dim_pols, len(Ein), len(Eloss)), dtype=float)
-    for pol in range(dim_pols):
-        weighted = np.einsum('elkif,if->elk', intergrand, pol_matrix_elements[pol])
-        cross_section[pol] = simpson(weighted, x=eocc, axis=0)
+    rho_shifted_all = np.empty((dim_states, len(eocc), len(Eloss)))
+    for i in range(dim_states): rho_shifted_all[i,:,:] = np.interp(e_interp_all.flatten(), e_mesh[above_zero], 
+                                           density_of_states[above_zero,i], left=0.0, right=0.0
+                                           ).reshape(len(eocc), len(Eloss))
 
-    # for (ie, ein) in enumerate(Ein):
-    #     for (je, eloss) in enumerate(Eloss):
-    #         e_interp = eocc + eloss
-    #         eout = ein - eloss
-    #         lorentz = 0.5*Gamma / ( (eocc - eout)**2 + 0.25*Gamma**2 )
-    #         rho_shifted = np.stack([np.interp(e_interp, e_mesh[above_zero], density_of_states[above_zero, initial], left=0.0, right=0.0) 
-    #                                  for initial in range(dim_states)], axis=1)
-    #         integrand = np.einsum('ei,ef,e->eif', rho_shifted, rho_occ, lorentz)
-    #         for pol in range(dim_pols):
-    #             total = np.einsum('eif,if->e', integrand, pol_matrix_elements[pol])
-    #             cross_section[pol, ie,je] = simpson(total, x=eocc)
+    intergrand = np.einsum('ef, iel, ekl->eklif', rho_occ, rho_shifted_all, lorentz)
 
+    cross_section = np.asarray([simpson(np.einsum('elkif,if->elk', intergrand, pol), x=eocc, axis=0)
+                                for ipol, pol in enumerate(pol_matrix_elements)]
+                                ).reshape(-1, len(Ein), len(Eloss))
     return x_grid, y_grid, cross_section
 
 def xas(e_mesh:np.ndarray, 

@@ -38,4 +38,8 @@ xray = xas(e_mesh, dos, pol_xas, Emin = -1.5, Emax = +7.0)
 
 The results of this calculation are shown below:
 
-![](data/example1-output.png)
+<p align="center">
+<img src="data/example1-output.png" width="300"/>
+<img src="data/example2-output.png" width="300"/>
+<img src="data/example3-output.png" width="300"/>
+</p>
