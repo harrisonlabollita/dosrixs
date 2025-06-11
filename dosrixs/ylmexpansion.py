@@ -53,7 +53,7 @@ class YlmExpansion(object):
         return YlmExpansion(l=self._l, data={key : self[key] + x[key] for key in set(self._data.keys()).union(x._data.keys()) })
 
     # subtraction
-    def __sub__(self, x:YlmExpansion) -> YlmExpansion : return self + -x
+    def __sub__(self, x:YlmExpansion) -> YlmExpansion : return self.__add__(-x)
 
     # properties
 
