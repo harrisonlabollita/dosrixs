@@ -1,7 +1,10 @@
 from __future__ import annotations
 from typing import Union, Iterator
+from copy import deepcopy
 
 Scalar = Union[int, float, complex]
+
+_ATOL = 1e-12
 
 class YlmExpansion(object):
     r"""An abstract representation of a state in a basis of spherical harmonics. A state is represented as:
@@ -25,12 +28,15 @@ class YlmExpansion(object):
         for x, y in self._data.items(): yield x[0], x[1], y
 
     def __repr__(self:YlmExpansion) -> str:  
-        idx2spin = lambda x : '↑' if x > 0 else '↓'
-        return " ".join([f"{val:.4f}*|{self._l},{key[0]}>⊗|{idx2spin(key[1])}>" for (key, val) in self._data.items() if val !=0+0j])
+        idx2spin = lambda x : '↑' if x == 0 else '↓'
+        return " ".join([f"{val:.4f}*|{self._l},{key[0]}>⊗|{idx2spin(key[1])}>" for (key, val) in self._data.items() if abs(val) > _ATOL])
     
     def __eq__(self:YlmExpansion, x) -> bool: 
         if isinstance(x, YlmExpansion): 
-            return self._l == x._l and self._data == x._data
+            if self._l != x._l:
+                return False
+            all_keys = set(self._data.keys()).union(x._data.keys())
+            return all(abs(self[key] - x[key]) < _ATOL for key in all_keys)
         raise ValueError(f"No equality operation available for {type(x).__name__}!")
 
     __str__ = __repr__
@@ -55,6 +61,26 @@ class YlmExpansion(object):
     # subtraction
     def __sub__(self, x:YlmExpansion) -> YlmExpansion : return self.__add__(-x)
 
+    # copy
+    def copy(self) -> YlmExpansion: return deepcopy(self)
+
+    # conjugate
+    def conjugate(self) -> YlmExpansion:
+        r"""Return the complex conjugate of this expansion.
+
+        :return: a new YlmExpansion with conjugated coefficients
+        :rtype: YlmExpansion
+        """
+        return YlmExpansion(l=self._l, data={key : val.conjugate() if isinstance(val, complex) else val for key, val in self._data.items()})
+
+    def norm(self) -> float:
+        r"""Compute the norm :math:`\sqrt{\langle \psi | \psi \rangle} = \sqrt{\sum_{m,\sigma} |c_{m\sigma}|^2}`.
+
+        :return: the norm of the state
+        :rtype: float
+        """
+        return sum(abs(val)**2 for val in self._data.values())**0.5
+
     # properties
 
     @property
@@ -62,4 +88,4 @@ class YlmExpansion(object):
 
     @property
     def magnetic_quantum_numbers(self)->list[int]: 
-        return [m for m in list(range(-self._l, self._l+1)) if m in list(map(lambda x : x[0], self._data.keys()))]
+        return [m for m in range(-self._l, self._l+1) if any(abs(self._data.get((m, s), 0.0)) > _ATOL for s in range(2))]

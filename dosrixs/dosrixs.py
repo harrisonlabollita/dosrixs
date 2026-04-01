@@ -44,7 +44,6 @@ def _str2dorbital(d:DORBITAL) -> YlmExpansion:
         case 'dxz':   return DXZ
         case 'dyz':   return DYZ
 
-
 def build_d_states(order:list[DORBITAL]=["dz2", "dxy", "dx2y2", "dxz", "dyz"]) -> list[YlmExpansion]:
     """The d-orbital valence states ordered by the order keyword.
 
@@ -56,6 +55,77 @@ def build_d_states(order:list[DORBITAL]=["dz2", "dxy", "dx2y2", "dxz", "dyz"]) -
     """
     return [ _str2dorbital(o) for o in order]
 
+def build_local_d_states(U:np.ndarray|None=None, order:list[DORBITAL]=["dz2", "dx2y2", "dxy", "dxz", "dyz"]) -> list[YlmExpansion]:
+    r"""Build valence states from a local-to-cubic-harmonic rotation matrix U.
+
+    Given a unitary matrix U that relates a local d-orbital basis to the
+    standard cubic harmonics, this function constructs the local orbitals
+    as :class:`YlmExpansion` objects suitable for matrix element calculations.
+
+    The local orbitals are defined as:
+
+    .. math:: |\tilde{d}_\alpha\rangle = \sum_\beta U_{\beta\alpha} |d_\beta\rangle
+
+    where :math:`|d_\beta\rangle` are the standard cubic harmonics in the given order.
+
+    :param U: unitary rotation matrix (5×5) from local to cubic harmonic basis,
+              where column α gives the cubic harmonic coefficients of local orbital α.
+              Defaults to the identity matrix (standard cubic harmonics).
+    :type U: np.ndarray | None
+    :param order: ordering of the cubic harmonic d-orbitals matching U's rows
+    :type order: list[DORBITAL]
+    :return: local d-orbital states as YlmExpansion objects
+    :rtype: list[YlmExpansion]
+    """
+    if U is None:
+        U = np.eye(5)
+    cubic_states = build_d_states(order)
+    local_states = []
+    for alpha in range(U.shape[1]):
+        state = U[0, alpha] * cubic_states[0]
+        for beta in range(1, len(cubic_states)):
+            state = state + U[beta, alpha] * cubic_states[beta]
+        local_states.append(state)
+    return local_states
+
+def cubic_to_spherical_matrix(order:list[DORBITAL]=["dz2", "dx2y2", "dxy", "dxz", "dyz"]) -> np.ndarray:
+    r"""Build the unitary transformation matrix T from the cubic harmonic
+    (real d-orbital) basis to the complex spherical harmonic basis.
+
+    The rows are indexed by :math:`m = -2, -1, 0, 1, 2` and the columns
+    by the cubic harmonic orbitals in the given order.
+
+    To transform a matrix U from the cubic to the spherical harmonic basis:
+
+    .. math:: U^{Y_{lm}} = T \, U \, T^{\dagger}
+
+    :param order: ordering of the cubic harmonic d-orbitals
+    :type order: list[DORBITAL]
+    :return: the 5×5 unitary transformation matrix T
+    :rtype: np.ndarray
+    """
+    d_states = build_d_states(order)
+    T = np.zeros((5, 5), dtype=complex)
+    for col, state in enumerate(d_states):
+        for m in range(-2, 3):
+            T[m + 2, col] = state[(m, 0)]
+    return T
+
+def rotate_matrix_to_spherical(U:np.ndarray, order:list[DORBITAL]=["dz2", "dx2y2", "dxy", "dxz", "dyz"]) -> np.ndarray:
+    r"""Rotate a matrix from the cubic harmonic basis to the spherical harmonic basis.
+
+    .. math:: U^{Y_{lm}} = T \, U \, T^{\dagger}
+
+    :param U: a matrix defined in the cubic harmonic d-orbital basis
+    :type U: np.ndarray
+    :param order: ordering of the cubic harmonic d-orbitals matching the rows/columns of U
+    :type order: list[DORBITAL]
+    :return: the matrix in the spherical harmonic (m = -2, -1, 0, 1, 2) basis
+    :rtype: np.ndarray
+    """
+    T = cubic_to_spherical_matrix(order)
+    return T @ U @ T.conj().T
+
 def get_core_edge_quantum_numbers(edge:EDGE) -> dict[str, float]:
     """Get the quantum number corresponding to an edge.
 
@@ -66,6 +136,7 @@ def get_core_edge_quantum_numbers(edge:EDGE) -> dict[str, float]:
     """
     if   edge == "L2":  return {'n' : 2, 'l' : 1, 'j' : 0.5}
     elif edge == "L3":  return {'n' : 2, 'l' : 1, 'j' : 1.5}
+    else: raise ValueError(f"Unsupported edge: '{edge}'. Supported edges: L2, L3.")
 
 def build_core_states(edge:EDGE) -> list[YlmExpansion]: 
     """The core states for the a given RIXS edge process
@@ -80,7 +151,7 @@ def build_core_states(edge:EDGE) -> list[YlmExpansion]:
     spin2idx = lambda x : 0 if x > 0 else 1
     loop = int(j*2)
     core_states:list[YlmExpansion] = []
-    for tmj in [x for x in np.arange(-loop, loop+1, 2) if x != 0]:
+    for tmj in np.arange(-loop, loop+1, 2):
         mj= float(0.5*tmj)
         data = {}
         for m in range(-l, l+1):
@@ -103,21 +174,42 @@ def initial_to_final_transition_amplitude(core_states:list[YlmExpansion],
     |c> are the core states and |i>, |f> are the initial and 
     final valence states. 
     """
-    total= np.zeros((2,2),dtype=complex)
-    for (sp1, sp2) in product(range(2), range(2)):
-        for core in core_states:
-            dipole_out = sum(final[(m, sp2)]*core[(l, sp2)]*coeffq*gaunt(m1=l, m2=mq, m3=m)
-                               for m in final.magnetic_quantum_numbers
-                               for l in core.magnetic_quantum_numbers
-                               for (mq, _, coeffq) in outgoing_pol)
-            dipole_in = sum(initial[(m, sp1)]*core[(l, sp1)]*coeffq*gaunt(m1=l, m2=mq, m3=m)
-                               for m in initial.magnetic_quantum_numbers
-                               for l in  core.magnetic_quantum_numbers
-                               for (mq, _, coeffq) in incoming_pol)
-            total[sp1,sp2] += np.conj(dipole_out)*dipole_in
+    lc = core_states[0].angular_quantum_number
+    lp_in = incoming_pol.angular_quantum_number
+    lp_out = outgoing_pol.angular_quantum_number
+    li = initial.angular_quantum_number
+    lf = final.angular_quantum_number
+
+    # Pre-collect non-zero (m, spin, coeff) entries to avoid redundant lookups
+    initial_terms = [(m, s, c) for m, s, c in initial if abs(c) > 0]
+    final_terms   = [(m, s, c) for m, s, c in final   if abs(c) > 0]
+    pol_in_terms  = [(mq, sq, cq) for mq, sq, cq in incoming_pol  if abs(cq) > 0]
+    pol_out_terms = [(mq, sq, cq) for mq, sq, cq in outgoing_pol  if abs(cq) > 0]
+
+    total = np.zeros((2, 2), dtype=complex)
+    for core in core_states:
+        core_terms = [(mc, sc, cc) for mc, sc, cc in core if abs(cc) > 0]
+        for sp1, sp2 in product(range(2), range(2)):
+            dipole_out = 0.0j
+            for m, s, cf in final_terms:
+                if s != sp2: continue
+                for mc, sc, cc in core_terms:
+                    if sc != sp2: continue
+                    for mq, _, cq in pol_out_terms:
+                        if mc + mq + m != 0: continue
+                        dipole_out += cf * cc * cq * gaunt(lc, mc, lp_out, mq, lf, m)
+
+            dipole_in = 0.0j
+            for m, s, ci in initial_terms:
+                if s != sp1: continue
+                for mc, sc, cc in core_terms:
+                    if sc != sp1: continue
+                    for mq, _, cq in pol_in_terms:
+                        if mc + mq + m != 0: continue
+                        dipole_in += ci * cc * cq * gaunt(lc, mc, lp_in, mq, li, m)
+
+            total[sp1, sp2] += np.conj(dipole_out) * dipole_in
     return float(np.sum(np.abs(total)**2))
-
-
 
 def rixs_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], 
                          incoming_pols:list[YlmExpansion]|YlmExpansion, outgoing_pols:list[YlmExpansion]|YlmExpansion ) -> np.ndarray:
@@ -219,11 +311,19 @@ def rixs_cross_section(e_mesh:np.ndarray,
                                            density_of_states[above_zero,i], left=0.0, right=0.0
                                            ).reshape(len(eocc), len(Eloss))
 
-    intergrand = np.einsum('ef, iel, ekl->eklif', rho_occ, rho_shifted_all, lorentz)
+    # Contract polarization matrix elements with occupied DOS up front
+    # rho_occ: (n_occ, n_states), pol: (n_pol, n_states, n_states)
+    # rho_pol: (n_pol, n_occ, n_states) = sum_f rho_occ(e,f) * M(pol,f,i) 
+    #   → weight for each (pol, occ_energy, initial_state)
+    rho_pol = np.einsum('ef,pfi->pei', rho_occ, pol_matrix_elements)
 
-    cross_section = np.asarray([simpson(np.einsum('elkif,if->elk', intergrand, pol), x=eocc, axis=0)
-                                for ipol, pol in enumerate(pol_matrix_elements)]
-                                ).reshape(-1, len(Ein), len(Eloss))
+    # rho_shifted_all: (n_states, n_occ, n_eloss)
+    # rho_pol:         (n_pol, n_occ, n_states)
+    # lorentz:         (n_occ, n_ein, n_eloss)
+    # integrand:       (n_pol, n_occ, n_ein, n_eloss)
+    integrand = np.einsum('pei,iel,ekl->pekl', rho_pol, rho_shifted_all, lorentz)
+
+    cross_section = simpson(integrand, x=eocc, axis=1)
     return x_grid, y_grid, cross_section
 
 def xas(e_mesh:np.ndarray, 
@@ -252,7 +352,7 @@ def xas(e_mesh:np.ndarray,
 
     dim_states = density_of_states.shape[-1]
     dim_pol_el = pol_matrix_elements.shape[-1]
-    assert dim_states == dim_pol_el, "The dimension of the density of states is not equal to the number of polarization elements ({dim_states} != {dim_pol})"
+    assert dim_states == dim_pol_el, f"The dimension of the density of states is not equal to the number of polarization elements ({dim_states} != {dim_pol_el})"
 
     dim_pol = pol_matrix_elements.shape[0]
 
@@ -263,12 +363,14 @@ def xas(e_mesh:np.ndarray,
 
     Ein   = e_mesh[(e_mesh > Emin) & (e_mesh < Emax)]
 
-    xas_data = np.zeros((dim_pol, len(Ein)), dtype=float)
+    # lorentz: shape (n_unocc, n_ein)
+    lorentz = 0.5 * Gamma / ((eunocc[:, None] - Ein[None, :]) ** 2 + 0.25 * Gamma ** 2)
 
-    for (ie, ein) in enumerate(Ein):
-        lorentz = 0.5*Gamma / ( (eunocc - ein)**2 + 0.25*Gamma**2 )
-        for state in range(dim_states):
-            for pol in range(dim_pol):
-                integrand    = rho_unocc[:, state]*pol_matrix_elements[pol, state]*lorentz
-                xas_data[pol, ie] += simpson(integrand, x=eunocc)
+    # rho_weighted: shape (n_pol, n_states, n_unocc) — DOS weighted by matrix elements
+    rho_weighted = pol_matrix_elements[:, :, None] * rho_unocc[None, :, :].transpose(0, 2, 1)
+
+    # integrand: shape (n_pol, n_unocc, n_ein) — sum over states, then integrate over unocc
+    integrand = np.einsum('pse,ek->pek', rho_weighted, lorentz)
+    xas_data = simpson(integrand, x=eunocc, axis=1)
+
     return Ein, xas_data

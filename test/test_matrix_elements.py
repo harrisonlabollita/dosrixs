@@ -5,7 +5,7 @@ from dosrixs import rixs_matrix_elements
 from dosrixs.ylmexpansion import YlmExpansion
 from dosrixs.utils import gaunt
 
-g = lambda x, y, z: gaunt(m1=x,m2=y,m3=z)
+g = lambda x, y, z: gaunt(l1=1, m1=x, l2=1, m2=y, l3=2, m3=z)
 
 def _generate_reference_matrix_elements(theta, thetap):
 

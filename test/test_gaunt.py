@@ -49,7 +49,7 @@ class TestGaunt(unittest.TestCase):
                                [  1,  1,  0,  0.000000 ],
                                [  1,  1,  1,  0.000000 ],
                                [  1,  1,  2,  0.000000 ]])
-        data = np.asarray([ [m1, m2, m3, gaunt(m1=m1, m2=m2, m3=m3)] for m1 in [-1,0,1] for m2 in [-1,0,1] for m3 in [-2,-1,0,1,2]])
+        data = np.asarray([ [m1, m2, m3, gaunt(l1=1, m1=m1, l2=1, m2=m2, l3=2, m3=m3)] for m1 in [-1,0,1] for m2 in [-1,0,1] for m3 in [-2,-1,0,1,2]])
         np.testing.assert_allclose(ref_data[:,-1], data[:,-1], rtol=1e-5, atol=1e-5)
 
 if __name__ == "__main__":

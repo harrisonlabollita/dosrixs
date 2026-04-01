@@ -27,32 +27,32 @@ def three_j_symbol(j1:int, m1:int, j2:int, m2:int, j3:int, m3:int) -> float:
     return float(three_j_sym)
 
 @lru_cache
-def gaunt(l1:int=1, l2:int=1, l3:int=2, m1:int=0, m2:int=0, m3:int=0) -> float:
+def gaunt(l1:int, m1:int, l2:int, m2:int, l3:int, m3:int) -> float:
     r"""Compute Gaunt coefficients:
 
     .. math:: G(l_{1}, l_{2}, l_{3}, m_{1}, m_{2}, m_{3}) = \int d \Omega Y_{l_{1}}^{m_{1}}(\Omega)Y_{l_{2}}^{m_{2}}(\Omega)Y_{l_{3}}^{m_{3}}(\Omega) 
 
-    :param l1: angular quantum number, defaults to 1
-    :type l1: int, optional
-    :param l2: angular quantum number, defaults to 1
-    :type l2: int, optional
-    :param l3: total angular momentum, defaults to 2
-    :type l3: int, optional
-    :param m1: magnetic quantum number, defaults to 0
-    :type m1: int, optional
-    :param m2: magnetic quantum number, defaults to 0
-    :type m2: int, optional
-    :param m3: total magnetic quanutm number, defaults to 0
-    :type m3: int, optional
+    :param l1: angular quantum number
+    :type l1: int
+    :param m1: magnetic quantum number
+    :type m1: int
+    :param l2: angular quantum number
+    :type l2: int
+    :param m2: magnetic quantum number
+    :type m2: int
+    :param l3: angular quantum number
+    :type l3: int
+    :param m3: magnetic quantum number
+    :type m3: int
     :return: Gaunt coefficient
     :rtype: float
     """
-    coeff = np.sqrt(45.0/np.arctan(1.0)/16.0)
+    coeff = np.sqrt((2*l1+1)*(2*l2+1)*(2*l3+1)/(4*np.pi))
     a = three_j_symbol(l1, 0, l2, 0, l3, 0)
     b = three_j_symbol(l1, m1, l2, m2, l3, m3)
     return coeff*a*b
 
 def gaunt_sympy(l1:float, m1:float, l2:float, m2:float, l3:float, m3:float) -> complex:
+    """Wrapper around sympy.physics.quantum.cg."""
     from sympy.physics.quantum.cg import CG
-    """wrapper around sympy.physics.quantum.cg"""
     return complex(CG(l1, m1, l2, m2, l3, m3).doit())
