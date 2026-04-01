@@ -18,19 +18,29 @@ DXZ   = YlmExpansion(l=2, data= {(-1,0) : +1.0/np.sqrt(2.0),  (+1,0) : -1.0/np.s
 def build_electric_fields(normal:str = 'z') -> tuple[YlmExpansion, YlmExpansion, YlmExpansion]:
     """Construct the electric fields for a given geometry.
 
-    :param normal: The surface normal direction, defaults to 'z'
+    Returns (EX, EY, EZ) — the three Cartesian polarization directions
+    expressed as l=1 spherical harmonic expansions. The labeling is always
+    in the lab frame; the ``normal`` parameter selects which axis is the
+    surface normal for convenience when constructing s/p polarizations.
+
+    :param normal: The surface normal direction ('x', 'y', or 'z'), defaults to 'z'
     :type normal: str, optional
-    :raises Exception: Throws an error for an incorrect normal surface
-    :return: The electric fields for a chosen surface normal.
+    :raises ValueError: If normal is not 'x', 'y', or 'z'
+    :return: The electric fields (EX, EY, EZ).
     :rtype: tuple[YlmExpansion, YlmExpansion, YlmExpansion]
     """
+    s2 = 1.0 / np.sqrt(2)
+    EX = YlmExpansion(l=1, data={(-1, 0):  s2, (0, 0): 0.0, (+1, 0): -s2})
+    EY = YlmExpansion(l=1, data={(-1, 0): 1j*s2, (0, 0): 0.0, (+1, 0): 1j*s2})
+    EZ = YlmExpansion(l=1, data={(-1, 0): 0.0, (0, 0): 1.0, (+1, 0): 0.0})
     if normal == 'z':
-        EX = YlmExpansion(l=1, data = {(-1,0) : 1.0/np.sqrt(2),  (0,0) : 0.0, (+1,0) : -1.0/np.sqrt(2) })
-        EY = YlmExpansion(l=1, data = {(-1,0) : 1.0j/np.sqrt(2), (0,0) : 0.0, (+1,0) : 1.0j/np.sqrt(2) })
-        EZ = YlmExpansion(l=1, data = {(-1,0) : 0.0,             (0,0) : 1.0, (+1,0) : 0.0 })
         return EX, EY, EZ
+    elif normal == 'x':
+        return EY, EZ, EX
+    elif normal == 'y':
+        return EZ, EX, EY
     else:
-        raise Exception(f"The surface normal = {normal} is not a valid option.")
+        raise ValueError(f"The surface normal = '{normal}' is not a valid option. Use 'x', 'y', or 'z'.")
 
 DORBITAL = Literal["dxy", "dx2y2", "dz2", "dxz", "dyz"]
 
