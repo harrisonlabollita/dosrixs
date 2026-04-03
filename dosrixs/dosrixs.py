@@ -65,7 +65,7 @@ def build_d_states(order:list[DORBITAL]=["dz2", "dxy", "dx2y2", "dxz", "dyz"]) -
     """
     return [ _str2dorbital(o) for o in order]
 
-def build_local_d_states(U:np.ndarray|None=None, order:list[DORBITAL]=["dz2", "dx2y2", "dxy", "dxz", "dyz"]) -> list[YlmExpansion]:
+def build_local_d_states(U:np.ndarray|None=None, order:list[DORBITAL]=["dz2", "dxy", "dx2y2", "dxz", "dyz"]) -> list[YlmExpansion]:
     r"""Build valence states from a local-to-cubic-harmonic rotation matrix U.
 
     Given a unitary matrix U that relates a local d-orbital basis to the
@@ -98,7 +98,7 @@ def build_local_d_states(U:np.ndarray|None=None, order:list[DORBITAL]=["dz2", "d
         local_states.append(state)
     return local_states
 
-def cubic_to_spherical_matrix(order:list[DORBITAL]=["dz2", "dx2y2", "dxy", "dxz", "dyz"]) -> np.ndarray:
+def cubic_to_spherical_matrix(order:list[DORBITAL]=["dz2", "dxy", "dx2y2", "dxz", "dyz"]) -> np.ndarray:
     r"""Build the unitary transformation matrix T from the cubic harmonic
     (real d-orbital) basis to the complex spherical harmonic basis.
 
@@ -253,23 +253,48 @@ def rixs_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansio
     return M
 
 def xas_matrix_elements(states:list[YlmExpansion], core_states:list[YlmExpansion], polarizations:list[YlmExpansion]) -> np.ndarray:
-    """Computes the XAS matrix elements for a given polarization.
+    r"""Computes the XAS matrix elements for a given polarization.
+
+    The XAS intensity for orbital :math:`|i\rangle` is proportional to
+
+    .. math:: M_{\varepsilon, i} = \sum_{c, s} \left| \langle c | \hat{\varepsilon} \cdot \mathbf{r} | i, s \rangle \right|^{2}
+
+    where the sum runs over all core states :math:`|c\rangle` and both
+    spin channels :math:`s`.  This is a single-photon absorption formula
+    and must **not** be confused with the two-photon RIXS amplitude.
 
     :param states: a list of valence states
     :type states: list[YlmExpansion]
     :param core_states: a list of core states
     :type core_states: list[YlmExpansion]
-    :param polarization: incoming photon polarizations
-    :type polarization: list[YlmExpansion]
-    :return: XAS matrix elements
+    :param polarizations: incoming photon polarizations
+    :type polarizations: list[YlmExpansion]
+    :return: XAS matrix elements, shape ``(n_pol, n_states)``
     :rtype: np.ndarray
     """
+    lc = core_states[0].angular_quantum_number
+    lp = polarizations[0].angular_quantum_number
+    lv = states[0].angular_quantum_number
+
     dim_pols = len(polarizations)
     dim_states = len(states)
     M = np.zeros((dim_pols, dim_states), dtype=float)
     for ip, pol in enumerate(polarizations):
-        for initial in range(dim_states):
-            M[ip, initial] = initial_to_final_transition_amplitude(core_states, states[initial], states[initial],pol, pol)
+        pol_terms = [(mq, cq) for mq, _, cq in pol if abs(cq) > 0]
+        for iv, state in enumerate(states):
+            state_terms = [(m, s, c) for m, s, c in state if abs(c) > 0]
+            for core in core_states:
+                core_terms = [(mc, sc, cc) for mc, sc, cc in core if abs(cc) > 0]
+                for spin in range(2):
+                    dipole = 0.0j
+                    for mc, sc, cc in core_terms:
+                        if sc != spin: continue
+                        for mq, cq in pol_terms:
+                            for m, sv, cv in state_terms:
+                                if sv != spin: continue
+                                if -mc + mq + m != 0: continue
+                                dipole += np.conj(cc) * cq * cv * ((-1)**mc) * gaunt(lc, -mc, lp, mq, lv, m)
+                    M[ip, iv] += abs(dipole)**2
     return M
 
 def rixs_cross_section(e_mesh:np.ndarray, 
